@@ -38,20 +38,18 @@ COLON               :  ':';
 INCREASE_ADD        : '+=';
 DECREASE_SUBSTRACT  : '-=';
 INCREASE_MULTIPLY   : '*=';
-DECREASE_DIVISION  : '/=';   
+DECREASE_DIVISION  : '/=';
 DECREASE_MODULO     : '%=';
 LEFT_BRACKET        : '[';
 RIGHT_BRACKET       : ']';
 //STRING
-STRING_CHARACTER : '^'  LEFT_PARENTHESIS  '?' '!' .*( '\n' | '\'' )  RIGHT_PARENTHESIS.* ;
+fragment STRING_CHARACTER : '^'  LEFT_PARENTHESIS  '?' '!' .*( '\n' | '\'' )  RIGHT_PARENTHESIS.* ;
 STRING : '\''  STRING_CHARACTER* '\''  | '"'  STRING_CHARACTER* '"' ;
 //INTEGERS
-DIGIT : '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' ;
+fragment DIGIT : '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' ;
 INT : DIGIT+ ;
 //FLOAT VALUES
 FLOAT : DIGIT* '.' DIGIT+;
-DIGIT_PART : DIGIT+ ;
-FRACTION : '.' DIGIT_PART;
 //WHITESPACES
 fragment WHITESPACE : ' ' | '\t' | '\r';
 INDENT : WHITESPACE+;
