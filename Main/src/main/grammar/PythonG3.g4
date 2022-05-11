@@ -96,10 +96,12 @@ fragment LETTER          : ('a'..'z')|('A'..'Z')|'_';
 
 file_input : (NEWLINE | statement)* EOF;
 
-statement : simple_statement NEWLINE
-    | block_statement NEWLINE;
-simple_statement : increment_statement
-    | assign_statement;
+statement : simple_statement
+    | block_statement;
+simple_statement : (increment_statement
+    | assign_statement
+    | CONTINUE
+    | BREAK) NEWLINE;
 assign_statement : (VARIABLE ASSIGNMENT)+ expression;
 expression : expression CONST_OR conjunction
     | conjunction;
@@ -150,4 +152,4 @@ try_statement : TRY COLON block (CATCH VARIABLE (AS VARIABLE)? COLON block)+ (CA
 for_statement : FOR VARIABLE IN table COLON block;
 table : LEFT_BRACKET list_of_variables RIGHT_BRACKET;
 list_of_variables : atom (SEPARATOR atom)*;
-block : statement | NEWLINE INDENT (statement)+ DEDENT;
+block : simple_statement | NEWLINE INDENT (statement)+ DEDENT;
