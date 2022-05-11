@@ -52,25 +52,6 @@ STRING
  STRING_LITERAL
   : ( [rR] | [uU] | [fF] | ( [fF] [rR] ) | ( [rR] [fF] ) )? ( SHORT_STRING | LONG_STRING )
   ;
-   fragment SHORT_STRING
-    : '\'' ( STRING_ESCAPE_SEQ | ~[\\\r\n\f'] )* '\''
-    | '"' ( STRING_ESCAPE_SEQ | ~[\\\r\n\f"] )* '"'
-    ;
-    fragment LONG_STRING
-     : '\'\'\'' LONG_STRING_ITEM*? '\'\'\''
-     | '"""' LONG_STRING_ITEM*? '"""'
-     ;
-     fragment LONG_STRING_ITEM
-      : LONG_STRING_CHAR
-      | STRING_ESCAPE_SEQ
-      ;
-      fragment LONG_STRING_CHAR
-       : ~'\\'
-       ;
-       fragment STRING_ESCAPE_SEQ
-        : '\\' .
-        | '\\' NEWLINE
-        ;
 NEWLINE
 : ( {this.atStartOfInput()}?   SPACES
   | ( '\r'? '\n' | '\r' | '\f' ) SPACES?
@@ -81,16 +62,39 @@ fragment SPACES
  : [ \t]+
  ;
 //INTEGERS
-fragment DIGIT : '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' ;
 INT : DIGIT+ ;
 //FLOAT VALUES
 FLOAT : DIGIT* '.' DIGIT+;
+
+//variable ID
+VARIABLE        : LETTER (LETTER|DIGIT)* ;
+WS : ( SPACES | COMMENT ) -> skip;
+INCORECT_CHAR: .;
+
+fragment DIGIT : '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' ;
 //WHITESPACES
 fragment WHITESPACE : ' ' | '\t' | '\r' | '\n';
-//variable ID
-VARIABLE        : ID ;
-fragment ID              : LETTER (LETTER|DIGIT)*;
 fragment LETTER          : ('a'..'z')|('A'..'Z')|'_';
+fragment COMMENT : '#' ~[\r\n\f]*;
+fragment SHORT_STRING
+: '\'' ( STRING_ESCAPE_SEQ | ~[\\\r\n\f'] )* '\''
+| '"' ( STRING_ESCAPE_SEQ | ~[\\\r\n\f"] )* '"'
+;
+fragment LONG_STRING
+: '\'\'\'' LONG_STRING_ITEM*? '\'\'\''
+| '"""' LONG_STRING_ITEM*? '"""'
+;
+fragment LONG_STRING_ITEM
+: LONG_STRING_CHAR
+| STRING_ESCAPE_SEQ
+;
+fragment LONG_STRING_CHAR
+: ~'\\'
+;
+fragment STRING_ESCAPE_SEQ
+: '\\' .
+| '\\' NEWLINE
+;
 
 // parser
 
