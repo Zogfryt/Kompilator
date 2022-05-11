@@ -1,6 +1,112 @@
 grammar PythonG3;
 
 // lexer -- skaner
+tokens { INDENT, DEDENT }
+
+
+@lexer::members
+{
+    private java.util.LinkedList<Token> tokens = new java.util.LinkedList<>();
+    private java.util.Stack<Integer> levels = new java.util.Stack<>();
+    private int opened = 0;
+    private Token lastToken = null;
+
+
+    @Override
+    public void emit(Token current)
+    {
+        super.emit(current);
+        tokens.offer(current);
+    }
+
+    @Override
+    public Token nextToken()
+    {
+        if(_input.LA(1) == EOF && !levels.isEmpty())
+        {
+            emit(commonToken(PythonG3Parser.NEWLINE, "\n"));
+
+            while (!levels.isEmpty()) {
+                emit(createDedent());
+                levels.pop();
+            }
+
+            emit(commonToken(PythonG3Parser.EOF, "<EOF>"));
+        }
+
+        Token next = super.nextToken();
+
+        return tokens.isEmpty() ? next : tokens.poll();
+    }
+
+private Token createDedent() {
+        CommonToken dedent = commonToken(PythonG3Parser.DEDENT, "");
+        dedent.setLine(lastToken.getLine());
+        return dedent;
+    }
+
+    private CommonToken commonToken(int type, String text) {
+        int stop = getCharIndex() - 1;
+        int start = text.isEmpty() ? stop : stop - text.length() + 1;
+        return new CommonToken(_tokenFactorySourcePair, type, DEFAULT_TOKEN_CHANNEL, start, stop);
+    }
+
+    static int getIndentationCount(String spaces) {
+        int count = 0;
+        for (char ch : spaces.toCharArray()) {
+            if (ch == '\t') {
+                count += 8 - (count % 8);
+            } else {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    boolean atStartOfInput() {
+        return super.getCharPositionInLine() == 0 && super.getLine() == 1;
+    }
+
+    void openBrace(){
+        opened++;
+    }
+
+    void closeBrace(){
+        opened--;
+    }
+
+    void onNewLine(){
+        String newLine = getText().replaceAll("[^\r\n\f]+", "");
+        String spaces = getText().replaceAll("[\r\n\f]+", "");
+
+        int next = _input.LA(1);
+        int nextnext = _input.LA(2);
+        if (opened > 0 || (nextnext != -1 && (next == '\r' || next == '\n' || next == '\f' || next == '#')))
+        {
+            skip();
+        }
+        else {
+            emit(commonToken(PythonG3Parser.NEWLINE, newLine));
+            int indent = getIndentationCount(spaces);
+            int previous = levels.isEmpty() ? 0 : levels.peek();
+            if (indent == previous) {
+                skip();
+            }
+            else if (indent > previous) {
+                levels.push(indent);
+                emit(commonToken(PythonG3Parser.INDENT, spaces));
+            }
+            else {
+                while(!levels.isEmpty() && levels.peek() > indent) {
+                    emit(createDedent());
+                    levels.pop();
+                }
+            }
+        }
+    }
+
+}
 
 //KEYWORDS
 TRUE : 'True';
@@ -34,16 +140,16 @@ SMALLER           : '<' ;
 SMALLER_OR_EQUAL  : '<=' ;
 ASSIGNMENT        : '=' ;
 //SEPARATORS
-LEFT_PARENTHESIS    :  '(';
-RIGHT_PARENTHESIS   :  ')';
+LEFT_PARENTHESIS    :  '(' {openBrace();};
+RIGHT_PARENTHESIS   :  ')' {closeBrace();};
 COLON               :  ':';
 INCREASE_ADD        : '+=';
 DECREASE_SUBSTRACT  : '-=';
 INCREASE_MULTIPLY   : '*=';
 DECREASE_DIVISION  : '/=';
 DECREASE_MODULO     : '%=';
-LEFT_BRACKET        : '[';
-RIGHT_BRACKET       : ']';
+LEFT_BRACKET        : '[' {openBrace();};
+RIGHT_BRACKET       : ']' {closeBrace();};
 SEPARATOR: ',';
 //STRING
 STRING
@@ -53,10 +159,10 @@ STRING
   : ( [rR] | [uU] | [fF] | ( [fF] [rR] ) | ( [rR] [fF] ) )? ( SHORT_STRING | LONG_STRING )
   ;
 NEWLINE
-: ( {this.atStartOfInput()}?   SPACES
+: ( {atStartOfInput()}?   SPACES
   | ( '\r'? '\n' | '\r' | '\f' ) SPACES?
   )
-  {this.onNewLine();}
+  {onNewLine();}
 ;
 fragment SPACES
  : [ \t]+
