@@ -2,6 +2,8 @@ grammar PythonG3;
 
 // lexer -- skaner
 
+
+
 //KEYWORDS
 TRUE : 'True';
 FALSE : 'False';
@@ -45,6 +47,8 @@ DECREASE_MODULO     : '%=';
 LEFT_BRACKET        : '[';
 RIGHT_BRACKET       : ']';
 SEPARATOR: ',';
+LEFT_CURLY: '{';
+RIGHT_CURLY: '}';
 //STRING
 STRING
  : STRING_LITERAL
@@ -53,11 +57,8 @@ STRING
   : ( [rR] | [uU] | [fF] | ( [fF] [rR] ) | ( [rR] [fF] ) )? ( SHORT_STRING | LONG_STRING )
   ;
 NEWLINE
-: ( {this.atStartOfInput()}?   SPACES
-  | ( '\r'? '\n' | '\r' | '\f' ) SPACES?
-  )
-  {this.onNewLine();}
-;
+: ( '\r'? '\n' | '\r' | '\f' ) SPACES?
+  ;
 fragment SPACES
  : [ \t]+
  ;
@@ -156,4 +157,4 @@ try_statement : TRY COLON block (CATCH VARIABLE (AS VARIABLE)? COLON block)+ (CA
 for_statement : FOR VARIABLE IN table COLON block;
 table : LEFT_BRACKET list_of_variables RIGHT_BRACKET;
 list_of_variables : atom (SEPARATOR atom)*;
-block : simple_statement | NEWLINE INDENT (statement)+ DEDENT;
+block : simple_statement | NEWLINE? LEFT_CURLY (NEWLINE* statement)+ RIGHT_CURLY;
