@@ -4,5 +4,7 @@ public enum Type {
     INT,
     DOUBLE,
     STRING,
-    CHAR
+    CHAR,
+    NULL,
+    BOOL
 }
