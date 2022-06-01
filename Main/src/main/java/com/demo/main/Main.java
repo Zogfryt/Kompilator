@@ -20,8 +20,10 @@ public class Main {
             CommonTokenStream stream = new CommonTokenStream(lexer);
 
             PythonG3Parser parser = new PythonG3Parser(stream);
-            parser.addParseListener(new PythonG3Generator("C:\\Users\\bartw\\OneDrive\\Pulpit\\Kompilator\\Main\\src\\main\\source\\test.cpp"));
-            parser.file_input();
+            PythonG3Parser.File_inputContext fileInput = parser.file_input();
+
+            PythonG3Generator gen = new PythonG3Generator("C:\\Users\\bartw\\OneDrive\\Pulpit\\Kompilator\\Main\\src\\main\\source\\test.cpp");
+            gen.visit(fileInput);
 
             LOGGER.log(Level.INFO,"Done");
         }
