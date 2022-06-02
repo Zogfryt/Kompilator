@@ -4,5 +4,6 @@ public enum PythonTypes {
     STRING,
     NUMERICAL,
     BOOL,
-    NONE
+    NONE,
+    FLOAT
 }

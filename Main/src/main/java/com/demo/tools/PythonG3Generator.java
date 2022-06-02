@@ -14,7 +14,7 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
 
     private static final Logger LOGGER = Logger.getLogger( Main.class.getName() );
     private PrintWriter writer;
-    private HashMap<String,Type> values;
+    private HashMap<String,PythonTypes> values;
     private String separator;
     private Type currentExpressionOverralType;
     private HashMap<ParserRuleContext,PythonTypes> types;
@@ -89,18 +89,48 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
             LOGGER.log(Level.INFO,"Undefined variable");
             return "";
         }
-        return ctx.VARIABLE().getText() + ctx.children.get(1).getText() + visit(ctx.children.get(2));
+        String temp =  ctx.VARIABLE().getText() + ctx.children.get(1).getText() + visitExpression(ctx.expression());
+
+        if(ctx.INCREASE_ADD() == null && values.get(ctx.VARIABLE().getText()) == PythonTypes.STRING && types.get(ctx.expression()) == PythonTypes.STRING)
+        {
+            LOGGER.log(Level.INFO, "Cannot use increment statement with strings (only +=)");
+            return "";
+        }
+        else if ((values.get(ctx.VARIABLE().getText()) != PythonTypes.STRING && types.get(ctx.expression()) == PythonTypes.STRING)
+                || (values.get(ctx.VARIABLE().getText()) == PythonTypes.STRING && types.get(ctx.expression()) != PythonTypes.STRING))
+        {
+            LOGGER.log(Level.INFO,"Cannot use increment with string and numerical");
+            return "";
+        }
+        else if (values.get(ctx.VARIABLE().getText()) == PythonTypes.NONE || types.get(ctx.expression()) == PythonTypes.NONE)
+        {
+            LOGGER.log(Level.INFO,"Cannot increment null values");
+            return "";
+        }
+
+//        StringBuilder builder = new StringBuilder();
+//        builder.append("*");
+//        ctx.children.get(0).
+        return null;
     }
 
     @Override
     public String visitExpression(PythonG3Parser.ExpressionContext ctx)
     {
-        if (ctx.CONST_OR() != null)
+        if (ctx.CONST_OR() == null)
         {
-            return visitConjunction(ctx.conjunction());
+            String temp = visitConjunction(ctx.conjunction());
+            types.put(ctx,types.get(ctx.conjunction()));
+            types.remove(ctx.conjunction());
+            return temp;
         }
         String left = visitExpression(ctx.expression());
         String right = visitConjunction(ctx.conjunction());
+
+        types.remove(ctx.expression());
+        types.remove(ctx.conjunction());
+
+        types.put(ctx,PythonTypes.BOOL);
 
         return left + "||" + right;
 
@@ -109,12 +139,19 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitConjunction(PythonG3Parser.ConjunctionContext ctx)
     {
-        if (ctx.CONST_AND() != null)
+        if (ctx.CONST_AND() == null)
         {
-            return visitInversion(ctx.inversion());
+            String temp = visitInversion(ctx.inversion());
+            types.put(ctx,types.get(ctx.inversion()));
+            types.remove(ctx.inversion());
+            return temp;
         }
         String left = visitConjunction(ctx.conjunction());
         String right = visitInversion(ctx.inversion());
+
+        types.put(ctx,PythonTypes.BOOL);
+        types.remove(ctx.conjunction());
+        types.remove(ctx.inversion());
 
         return left + "&&" + right;
     }
@@ -122,25 +159,257 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitInversion(PythonG3Parser.InversionContext ctx)
     {
-        if (ctx.NEGATION() != null)
+        if (ctx.NEGATION() == null)
         {
-            return visitComparative(ctx.comparative());
+            String temp =  visitComparative(ctx.comparative());
+            types.put(ctx,types.get(ctx.comparative()));
+            types.remove(ctx.comparative());
+            return temp;
         }
-        return '!' + visitInversion(ctx.inversion());
+        String temp = '!' + visitInversion(ctx.inversion());
+        types.put(ctx, PythonTypes.BOOL);
+        types.remove(ctx.inversion());
+        return temp;
     }
 
     public String visitComparative(PythonG3Parser.ComparativeContext ctx)
     {
-        if(ctx.comparative_tail() != null)
+        if(ctx.comparative_tail() == null)
         {
-            return visitSum(ctx.sum());
+            String temp = visitSum(ctx.sum());
+            types.put(ctx,types.get(ctx.sum()));
+            types.remove(ctx.sum());
+            return temp;
         }
         var l = ctx.sum();
         var r = ctx.comparative_tail();
         String left = visitSum(l);
         String right = visitComparative_tail(r);
-        return null; //nie zwracaj uwagi to tylko by commit przeszedł
+
+        if ((types.get(l) == PythonTypes.STRING && types.get(r) != PythonTypes.STRING)
+                || (types.get(l) != PythonTypes.STRING && types.get(r) == PythonTypes.STRING))
+        {
+            LOGGER.log(Level.INFO, "String cannot compare to other types");
+            return "";
+        }
+
+        if (types.get(l) == PythonTypes.NONE || types.get(r) == PythonTypes.NONE)
+        {
+            LOGGER.log(Level.INFO, "None cannot be compared");
+            return "";
+        }
+
+        types.put(ctx,PythonTypes.BOOL);
+        types.remove(r);
+        types.remove(l);
+        return left + right;
+
     }
+
+    @Override
+    public String visitComparative_tail(PythonG3Parser.Comparative_tailContext ctx)
+    {
+        String temp =  visit(ctx.getChild(0));
+        types.put(ctx,types.get(ctx.getChild(0)));
+        types.remove(ctx.getChild(0));
+        return temp;
+    }
+
+    @Override
+    public String visitComparative_eq(PythonG3Parser.Comparative_eqContext ctx)
+    {
+        String temp = "==" + visitSum(ctx.sum());
+        types.put(ctx,types.get(ctx.sum()));
+        types.remove(ctx.sum());
+        return temp;
+    }
+
+    @Override
+    public String visitComparative_eq_less(PythonG3Parser.Comparative_eq_lessContext ctx)
+    {
+        String temp = "<=" + visitSum(ctx.sum());
+        types.put(ctx,types.get(ctx.sum()));
+        types.remove(ctx.sum());
+        return temp;
+    }
+
+    @Override
+    public String visitComparative_eq_more(PythonG3Parser.Comparative_eq_moreContext ctx)
+    {
+        String temp = ">=" + visitSum(ctx.sum());
+        types.put(ctx,types.get(ctx.sum()));
+        types.remove(ctx.sum());
+        return temp;
+    }
+
+    @Override
+    public String visitComparative_more(PythonG3Parser.Comparative_moreContext ctx)
+    {
+        String temp = ">" + visitSum(ctx.sum());
+        types.put(ctx,types.get(ctx.sum()));
+        types.remove(ctx.sum());
+        return temp;
+    }
+
+    @Override
+    public String visitComparative_less(PythonG3Parser.Comparative_lessContext ctx)
+    {
+        String temp = "<" + visitSum(ctx.sum());
+        types.put(ctx,types.get(ctx.sum()));
+        types.remove(ctx.sum());
+        return temp;
+    }
+
+    @Override
+    public String visitSum(PythonG3Parser.SumContext ctx)
+    {
+        if (ctx.MINUS() == null && ctx.PLUS() == null)
+        {
+            String temp = visitMult(ctx.mult());
+            types.put(ctx,types.get(ctx.mult()));
+            types.remove(ctx.mult());
+            return temp;
+        }
+
+        var l = ctx.sum();
+        var r = ctx.mult();
+        String left = visitSum(l);
+        String right = visitMult(r);
+
+        if (types.get(l) == PythonTypes.NONE || types.get(r) == PythonTypes.NONE)
+        {
+            LOGGER.log(Level.INFO, "Cannot operate on None Values");
+            return "";
+        }
+        else if (ctx.MINUS() != null && (types.get(r) == PythonTypes.STRING || types.get(l) == PythonTypes.STRING))
+        {
+            LOGGER.log(Level.INFO, "Cannot substract Strings");
+            return "";
+        }
+        else if ((types.get(r) == PythonTypes.STRING && types.get(l) != PythonTypes.STRING) ||
+                (types.get(r) != PythonTypes.STRING && types.get(l) == PythonTypes.STRING))
+        {
+            LOGGER.log(Level.INFO, "Cannot oparate on string and different type");
+            return "";
+        }
+
+        if (types.get(r) == PythonTypes.STRING && types.get(l) == PythonTypes.STRING)
+        {
+            types.put(ctx,PythonTypes.STRING);
+        }
+        else
+        {
+            types.put(ctx,PythonTypes.NUMERICAL);
+        }
+
+        types.remove(r);
+        types.remove(l);
+
+        char sign = ctx.MINUS() == null ? '+' : '-';
+        return left + sign + right;
+    }
+
+    @Override
+    public String visitMult(PythonG3Parser.MultContext ctx)
+    {
+        if(ctx.MULTIPLICATION() == null && ctx.DIVISION() == null)
+        {
+            String temp = visitAtom(ctx.atom());
+            types.put(ctx,types.get(ctx.atom()));
+            types.remove(ctx.atom());
+            return temp;
+        }
+
+        var l = ctx.mult();
+        var r = ctx.atom();
+        String left = visitMult(l);
+        String right = visitAtom(r);
+
+        if(types.get(l) == PythonTypes.STRING || types.get(r) == PythonTypes.STRING)
+        {
+            LOGGER.log(Level.INFO,"Cannot do division/multiplication on strings");
+            return "";
+        }
+        else if(types.get(r) == PythonTypes.NONE || types.get(l) == PythonTypes.NONE)
+        {
+            LOGGER.log(Level.INFO, "Cannot use None in multiplication/division");
+            return "";
+        };
+
+        char sign = ctx.MULTIPLICATION() == null ? '/' : '*';
+
+        if (types.get(l) == PythonTypes.FLOAT || types.get(r) == PythonTypes.FLOAT)
+        {
+            types.put(ctx,PythonTypes.FLOAT);
+        }
+        else
+        {
+            types.put(ctx,PythonTypes.FLOAT);
+        }
+
+        types.remove(r);
+        types.remove(l);
+
+        return left + sign + right;
+    }
+
+    @Override
+    public String visitAtom(PythonG3Parser.AtomContext ctx)
+    {
+        if(ctx.LEFT_PARENTHESIS() != null)
+        {
+            String temp = '(' + visitExpression(ctx.expression()) + ')';
+            types.put(ctx,types.get(ctx.expression()));
+            types.remove(ctx.expression());
+            return temp;
+        }
+        PythonTypes type = PythonTypes.NONE;
+        String temp = "";
+        if (ctx.FALSE() != null)
+        {
+            temp = "false";
+            type = PythonTypes.BOOL;
+        }
+        else if (ctx.TRUE() != null)
+        {
+            temp = "true";
+            type = PythonTypes.BOOL;
+        }
+        else if (ctx.NULL() != null)
+        {
+            temp = "nullptr";
+            type = PythonTypes.NONE;
+        }
+        else if (ctx.FLOAT() != null)
+        {
+            temp = ctx.FLOAT().getText();
+            type = PythonTypes.FLOAT;
+        }
+        else if (ctx.INT() != null)
+        {
+            temp = ctx.INT().getText();
+            type = PythonTypes.NUMERICAL;
+        }
+        else if (ctx.VARIABLE() != null)
+        {
+            String variable = ctx.VARIABLE().getText();
+            if(values.containsKey(variable))
+            {
+                temp = variable;
+                type = values.get(variable);
+            }
+            else
+            {
+                LOGGER.log(Level.INFO, "Unknown variable");
+                return "";
+            }
+        }
+        types.put(ctx,type);
+        return temp;
+    }
+
+
+
 
 
 }
