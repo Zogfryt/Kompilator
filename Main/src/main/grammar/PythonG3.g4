@@ -151,10 +151,10 @@ block_statement : if_statement
     | try_statement;
 
 while_statement : WHILE expression COLON block;
-if_statement : IF expression COLON block (ELSE_IF expression COLON block)* (ELSE COLON block);
+if_statement : IF expression COLON block (ELSE_IF expression COLON block)* (ELSE COLON block)?;
 try_statement : TRY COLON block (CATCH VARIABLE (AS VARIABLE)? COLON block)+ (CATCH COLON block)?
     | TRY COLON block CATCH COLON block;
 for_statement : FOR VARIABLE IN table COLON block;
 table : LEFT_BRACKET list_of_variables RIGHT_BRACKET;
 list_of_variables : atom (SEPARATOR atom)*;
-block : simple_statement | NEWLINE? LEFT_CURLY (NEWLINE* statement)+ RIGHT_CURLY;
+block : simple_statement | NEWLINE? LEFT_CURLY (NEWLINE* statement)+ NEWLINE* RIGHT_CURLY;

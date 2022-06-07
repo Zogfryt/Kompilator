@@ -1,3 +1,3 @@
-list = 0
-list += 4
-tekst = 123 + 'string' + True
+string = "Hehe"
+joinedString = "Hoho" + string + "Hihi"
+

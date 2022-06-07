@@ -2,7 +2,6 @@ package com.demo.tools;
 
 import com.demo.lexerAndParser.PythonG3BaseVisitor;
 import com.demo.lexerAndParser.PythonG3Parser;
-import com.demo.main.Main;
 import org.antlr.v4.runtime.ParserRuleContext;
 
 import java.io.*;
@@ -12,30 +11,76 @@ import java.util.logging.Logger;
 
 public class PythonG3Generator extends PythonG3BaseVisitor<String> {
 
-    private static final Logger LOGGER = Logger.getLogger( Main.class.getName() );
-    private PrintWriter writer;
-    private HashMap<String,PythonTypes> values;
-    private String separator;
-    private Type currentExpressionOverralType;
-    private HashMap<ParserRuleContext,PythonTypes> types;
+    private static final Logger LOGGER = Logger.getLogger( PythonG3Generator.class.getName() );
+    private final PrintWriter writer;
+    private final HashMap<String,PythonTypes> values;
+    private final String separator;
+    private final HashMap<ParserRuleContext,PythonTypes> types;
+
+    private final String Header = """
+    class Object{};
+    
+    class Integer: public Object
+    {
+    public:
+        int value;
+        explicit Integer(int val) : value(val){};
+    };
+    
+    class Double: public Object
+    {
+    public:
+        double value;
+        explicit Double(double val) : value(val){};
+    };
+    
+    class String: public Object
+    {
+    public:
+        std::string value;
+        explicit String(std::string val) : value(val){};
+    };
+    
+    class Boolean: public Object
+    {
+    public:
+        bool value;
+        explicit Boolean(bool val) : value(val){};
+    };
+    """;
 
 
     public PythonG3Generator(String path) throws IOException {
         FileManager manager = new FileManager();
         writer = manager.createPrintWriterToGivenFile(path);
         values = new HashMap<>();
-        separator = System.getProperty("file.separator");
+        separator = System.lineSeparator();
         types = new HashMap<>();
     }
 
     @Override
     public String visitFile_input(PythonG3Parser.File_inputContext ctx)
     {
+        writer.println(Header);
         writer.println("int main() {");
+        writer.println();
         for(var child : ctx.children)
         {
-            writer.print(visit(child));
+            String temp = visit(child);
+            if(temp != null)
+            {
+                writer.print(temp);
+            }
         }
+        writer.println();
+        for(var value : values.entrySet())
+        {
+            if(value.getValue() != PythonTypes.NONE)
+            {
+                writer.printf("delete %s;%s",value.getKey(),separator);
+            }
+        }
+        writer.println();
         writer.println("return 0;");
         writer.println("}");
         writer.close();
@@ -89,7 +134,7 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
             LOGGER.log(Level.INFO,"Undefined variable");
             return "";
         }
-        String temp =  ctx.VARIABLE().getText() + ctx.children.get(1).getText() + visitExpression(ctx.expression());
+        String expressionString = visitExpression(ctx.expression());
 
         if(ctx.INCREASE_ADD() == null && values.get(ctx.VARIABLE().getText()) == PythonTypes.STRING && types.get(ctx.expression()) == PythonTypes.STRING)
         {
@@ -108,10 +153,34 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
             return "";
         }
 
-//        StringBuilder builder = new StringBuilder();
-//        builder.append("*");
-//        ctx.children.get(0).
-        return null;
+        return ValueBuilder.buildVariableToUse(ctx.VARIABLE().getText(),values.get(ctx.VARIABLE().getText())) + ctx.getChild(1).getText() + expressionString + ';' + separator;
+    }
+
+    @Override
+    public String visitAssign_statement(PythonG3Parser.Assign_statementContext ctx)
+    {
+        String expression = visitExpression(ctx.expression());
+        PythonTypes type = types.get(ctx.expression());
+        StringBuilder build = new StringBuilder();
+
+        for(var variable : ctx.VARIABLE())
+        {
+            if(!values.containsKey(variable.getText()))
+            {
+                values.put(variable.getText(), type);
+                build.append(ValueBuilder.buildVariableToInitialize(variable.getText(), type, expression));
+            }
+            else if (values.get(variable.getText()) != type)
+            {
+                values.replace(variable.getText(), type);
+                build.append(ValueBuilder.buildVariableTypeChange(variable.getText(),expression,type,separator));
+            }
+            else {
+                build.append(ValueBuilder.buildVariableValuesChange(variable.getText(),expression,type));
+            }
+            build.append(separator);
+        }
+        return build.toString();
     }
 
     @Override
@@ -295,6 +364,8 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
 
         if (types.get(r) == PythonTypes.STRING && types.get(l) == PythonTypes.STRING)
         {
+            left = "std::string(" + left + ')';
+            right = "std::string(" + right + ')';
             types.put(ctx,PythonTypes.STRING);
         }
         else
@@ -334,7 +405,7 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
         {
             LOGGER.log(Level.INFO, "Cannot use None in multiplication/division");
             return "";
-        };
+        }
 
         char sign = ctx.MULTIPLICATION() == null ? '/' : '*';
 
@@ -344,7 +415,7 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
         }
         else
         {
-            types.put(ctx,PythonTypes.FLOAT);
+            types.put(ctx,PythonTypes.NUMERICAL);
         }
 
         types.remove(r);
@@ -378,7 +449,6 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
         else if (ctx.NULL() != null)
         {
             temp = "nullptr";
-            type = PythonTypes.NONE;
         }
         else if (ctx.FLOAT() != null)
         {
@@ -389,6 +459,11 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
         {
             temp = ctx.INT().getText();
             type = PythonTypes.NUMERICAL;
+        }
+        else if (ctx.STRING() != null)
+        {
+            temp = ctx.STRING().getText();
+            type = PythonTypes.STRING;
         }
         else if (ctx.VARIABLE() != null)
         {
