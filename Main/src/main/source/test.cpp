@@ -1,3 +1,5 @@
+#include <string>
+
 class Object{};
 
 class Integer: public Object
@@ -28,13 +30,14 @@ public:
     explicit Boolean(bool val) : value(val){};
 };
 
+double doubleBuffer;
+
 int main() {
 
-Object* string = new String("Hehe");
-Object* joinedString = new String(std::string(std::string("Hoho")+std::string(string))+std::string("Hihi"));
+Object* var_zmienna = new Integer(90);
+((Integer*)var_zmienna)->value%=6;
 
-delete string;
-delete joinedString;
+delete var_zmienna;
 
 return 0;
 }

@@ -97,4 +97,9 @@ class ValueBuilder {
         build.append(";");
         return build.toString();
     }
+
+    static String buildVariableName(String basename)
+    {
+        return "var_" + basename;
+    }
 }

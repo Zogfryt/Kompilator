@@ -1,3 +1,2 @@
-string = "Hehe"
-joinedString = "Hoho" + string + "Hihi"
-
+zmienna = 90
+zmienna %= 6

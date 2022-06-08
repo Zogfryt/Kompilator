@@ -133,6 +133,7 @@ sum : sum PLUS mult
 
 mult : mult MULTIPLICATION atom
     | mult DIVISION atom
+    | mult MODULO atom
     | atom;
 atom : VARIABLE
     | INT

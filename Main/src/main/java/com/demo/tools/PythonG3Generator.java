@@ -18,6 +18,8 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     private final HashMap<ParserRuleContext,PythonTypes> types;
 
     private final String Header = """
+    #include <string>
+    
     class Object{};
     
     class Integer: public Object
@@ -47,6 +49,8 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
         bool value;
         explicit Boolean(bool val) : value(val){};
     };
+    
+    double doubleBuffer;
     """;
 
 
@@ -129,31 +133,61 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitIncrement_statement(PythonG3Parser.Increment_statementContext ctx)
     {
-        if (!values.containsKey(ctx.VARIABLE().getText()))
+        String variable = ValueBuilder.buildVariableName(ctx.VARIABLE().getText());
+        if (!values.containsKey(variable))
         {
             LOGGER.log(Level.INFO,"Undefined variable");
             return "";
         }
         String expressionString = visitExpression(ctx.expression());
+        String sign = ctx.getChild(1).getText();
 
-        if(ctx.INCREASE_ADD() == null && values.get(ctx.VARIABLE().getText()) == PythonTypes.STRING && types.get(ctx.expression()) == PythonTypes.STRING)
+        if(ctx.INCREASE_ADD() == null && values.get(variable) == PythonTypes.STRING && types.get(ctx.expression()) == PythonTypes.STRING)
         {
             LOGGER.log(Level.INFO, "Cannot use increment statement with strings (only +=)");
             return "";
         }
-        else if ((values.get(ctx.VARIABLE().getText()) != PythonTypes.STRING && types.get(ctx.expression()) == PythonTypes.STRING)
-                || (values.get(ctx.VARIABLE().getText()) == PythonTypes.STRING && types.get(ctx.expression()) != PythonTypes.STRING))
+        else if ((values.get(variable) != PythonTypes.STRING && types.get(ctx.expression()) == PythonTypes.STRING)
+                || (values.get(variable) == PythonTypes.STRING && types.get(ctx.expression()) != PythonTypes.STRING))
         {
             LOGGER.log(Level.INFO,"Cannot use increment with string and numerical");
             return "";
         }
-        else if (values.get(ctx.VARIABLE().getText()) == PythonTypes.NONE || types.get(ctx.expression()) == PythonTypes.NONE)
+        else if (values.get(variable) == PythonTypes.NONE || types.get(ctx.expression()) == PythonTypes.NONE)
         {
             LOGGER.log(Level.INFO,"Cannot increment null values");
             return "";
         }
 
-        return ValueBuilder.buildVariableToUse(ctx.VARIABLE().getText(),values.get(ctx.VARIABLE().getText())) + ctx.getChild(1).getText() + expressionString + ';' + separator;
+        return buildIncrement(sign, variable, expressionString, values.get(variable), types.get(ctx.expression()));
+    }
+
+    private String buildIncrement(String sign, String variable, String expression, PythonTypes variableType, PythonTypes expressionType)
+    {
+        if (sign.equals("%=") && expressionType == PythonTypes.FLOAT)
+        {
+            StringBuilder build = new StringBuilder();
+            build.append("doubleBuffer = ");
+            build.append(expression);
+            build.append(';');
+            build.append(separator);
+            String left = ValueBuilder.buildVariableToUse(variable,variableType);
+            String value = String.format("%s - ((int)(%s / doubleBuffer)) * doubleBuffer;",left,left);
+            build.append("doubleBuffer = ");
+            build.append(value);
+            build.append(separator);
+            if (variableType == PythonTypes.FLOAT)
+            {
+                build.append(ValueBuilder.buildVariableValuesChange(variable,"doubleBuffer", PythonTypes.FLOAT));
+            }
+            else
+            {
+                build.append(ValueBuilder.buildVariableTypeChange(variable,"doubleBuffer",PythonTypes.FLOAT,separator));
+            }
+            build.append(separator);
+            return build.toString();
+        }
+        else return ValueBuilder.buildVariableToUse(variable,variableType) + sign + expression + ';' + separator;
     }
 
     @Override
@@ -165,18 +199,19 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
 
         for(var variable : ctx.VARIABLE())
         {
-            if(!values.containsKey(variable.getText()))
+            String name = ValueBuilder.buildVariableName(variable.getText());
+            if(!values.containsKey(name))
             {
-                values.put(variable.getText(), type);
-                build.append(ValueBuilder.buildVariableToInitialize(variable.getText(), type, expression));
+                values.put(name, type);
+                build.append(ValueBuilder.buildVariableToInitialize(name, type, expression));
             }
-            else if (values.get(variable.getText()) != type)
+            else if (values.get(name) != type)
             {
-                values.replace(variable.getText(), type);
-                build.append(ValueBuilder.buildVariableTypeChange(variable.getText(),expression,type,separator));
+                values.replace(name, type);
+                build.append(ValueBuilder.buildVariableTypeChange(name,expression,type,separator));
             }
             else {
-                build.append(ValueBuilder.buildVariableValuesChange(variable.getText(),expression,type));
+                build.append(ValueBuilder.buildVariableValuesChange(name,expression,type));
             }
             build.append(separator);
         }
@@ -241,6 +276,7 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
         return temp;
     }
 
+    @Override
     public String visitComparative(PythonG3Parser.ComparativeContext ctx)
     {
         if(ctx.comparative_tail() == null)
@@ -271,6 +307,8 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
         types.put(ctx,PythonTypes.BOOL);
         types.remove(r);
         types.remove(l);
+
+
         return left + right;
 
     }
@@ -364,13 +402,15 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
 
         if (types.get(r) == PythonTypes.STRING && types.get(l) == PythonTypes.STRING)
         {
-            left = "std::string(" + left + ')';
-            right = "std::string(" + right + ')';
             types.put(ctx,PythonTypes.STRING);
+        }
+        else if (types.get(r) == PythonTypes.FLOAT || types.get(l) == PythonTypes.FLOAT)
+        {
+            types.put(ctx,PythonTypes.FLOAT);
         }
         else
         {
-            types.put(ctx,PythonTypes.NUMERICAL);
+            types.put(ctx, PythonTypes.NUMERICAL);
         }
 
         types.remove(r);
@@ -407,7 +447,12 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
             return "";
         }
 
-        char sign = ctx.MULTIPLICATION() == null ? '/' : '*';
+        char sign;
+        if (ctx.MULTIPLICATION() != null)
+        {
+            sign = '*';
+        }
+        else sign = ctx.DIVISION() != null ? '/' : '%';
 
         if (types.get(l) == PythonTypes.FLOAT || types.get(r) == PythonTypes.FLOAT)
         {
@@ -421,7 +466,12 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
         types.remove(r);
         types.remove(l);
 
-        return left + sign + right;
+        if (types.get(ctx) == PythonTypes.FLOAT && sign == '%')
+        {
+            return String.format("(%s - ((int)(%s / %s)) * %s",left,left,right,right);
+        }
+        else return left + sign + right;
+
     }
 
     @Override
@@ -462,16 +512,16 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
         }
         else if (ctx.STRING() != null)
         {
-            temp = ctx.STRING().getText();
+            temp = "std::string(" + ctx.STRING().getText() + ')';
             type = PythonTypes.STRING;
         }
         else if (ctx.VARIABLE() != null)
         {
-            String variable = ctx.VARIABLE().getText();
+            String variable = ValueBuilder.buildVariableName(ctx.VARIABLE().getText());
             if(values.containsKey(variable))
             {
-                temp = variable;
                 type = values.get(variable);
+                temp = ValueBuilder.buildVariableToUse(variable,type);
             }
             else
             {
