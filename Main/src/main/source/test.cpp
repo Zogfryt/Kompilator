@@ -36,7 +36,10 @@ int main() {
 
 Object* var_zmienna = new Integer(90);
 ((Integer*)var_zmienna)->value%=6;
-
+((Integer*)var_zmienna)->value = 0;
+for(int i : [1,2,3,4]){
+((Integer*)var_zmienna)->value+=1;
+}
 delete var_zmienna;
 
 return 0;
