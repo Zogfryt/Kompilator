@@ -1,2 +1,1 @@
-zmienna = 90
-zmienna %= 6
+zmienna = 34 < (56 * )

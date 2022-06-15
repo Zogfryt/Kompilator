@@ -34,10 +34,7 @@ double doubleBuffer;
 
 int main() {
 
-Object* var_zmienna = new Integer(90);
-((Integer*)var_zmienna)->value%=6;
 
-delete var_zmienna;
 
 return 0;
 }

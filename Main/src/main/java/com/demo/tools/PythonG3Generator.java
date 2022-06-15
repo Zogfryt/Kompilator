@@ -3,6 +3,8 @@ package com.demo.tools;
 import com.demo.lexerAndParser.PythonG3BaseVisitor;
 import com.demo.lexerAndParser.PythonG3Parser;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.io.*;
 import java.util.HashMap;
@@ -16,6 +18,8 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     private final HashMap<String,PythonTypes> values;
     private final String separator;
     private final HashMap<ParserRuleContext,PythonTypes> types;
+    private int line;
+    private int start;
 
     private final String Header = """
     #include <string>
@@ -60,6 +64,8 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
         values = new HashMap<>();
         separator = System.lineSeparator();
         types = new HashMap<>();
+        line = 0;
+        start = 0;
     }
 
     @Override
@@ -70,7 +76,19 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
         writer.println();
         for(var child : ctx.children)
         {
-            String temp = visit(child);
+            String temp;
+            try {
+                temp = visit(child);
+            }
+            catch (IllegalArgumentException exception)
+            {
+                if (!exception.getMessage().isEmpty())
+                {
+                    LOGGER.log(Level.INFO, exception.getMessage());
+                }
+                continue;
+            }
+
             if(temp != null)
             {
                 writer.print(temp);
@@ -102,7 +120,7 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
            return visitBlock_statement(ctx.block_statement());
         }
 
-        throw new IllegalArgumentException("Error in visitStatement");
+        throw new IllegalArgumentException("");
     }
 
     @Override
@@ -126,37 +144,35 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
         }
         else
         {
-            throw new IllegalArgumentException("Error in SimpleStatement");
+            throw new IllegalArgumentException("");
         }
     }
 
     @Override
     public String visitIncrement_statement(PythonG3Parser.Increment_statementContext ctx)
     {
+        UpdateLineAndStart(ctx.VARIABLE().getSymbol());
         String variable = ValueBuilder.buildVariableName(ctx.VARIABLE().getText());
         if (!values.containsKey(variable))
         {
-            LOGGER.log(Level.INFO,"Undefined variable");
-            return "";
+            throw new IllegalArgumentException(GenerateErrorHeader() + "Undefined Variable");
         }
         String expressionString = visitExpression(ctx.expression());
         String sign = ctx.getChild(1).getText();
+        UpdateLineAndStart(ChildFinder.getSignIncrement(ctx).getSymbol());
 
         if(ctx.INCREASE_ADD() == null && values.get(variable) == PythonTypes.STRING && types.get(ctx.expression()) == PythonTypes.STRING)
         {
-            LOGGER.log(Level.INFO, "Cannot use increment statement with strings (only +=)");
-            return "";
+            throw new IllegalArgumentException(GenerateErrorHeader() + "Cannot use increment statement with strings (only +=)");
         }
         else if ((values.get(variable) != PythonTypes.STRING && types.get(ctx.expression()) == PythonTypes.STRING)
                 || (values.get(variable) == PythonTypes.STRING && types.get(ctx.expression()) != PythonTypes.STRING))
         {
-            LOGGER.log(Level.INFO,"Cannot use increment with string and numerical");
-            return "";
+            throw new IllegalArgumentException(GenerateErrorHeader() + "Cannot use increment with string and numerical");
         }
         else if (values.get(variable) == PythonTypes.NONE || types.get(ctx.expression()) == PythonTypes.NONE)
         {
-            LOGGER.log(Level.INFO,"Cannot increment null values");
-            return "";
+            throw new IllegalArgumentException(GenerateErrorHeader() + "Cannot increment null values");
         }
 
         return buildIncrement(sign, variable, expressionString, values.get(variable), types.get(ctx.expression()));
@@ -199,6 +215,7 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
 
         for(var variable : ctx.VARIABLE())
         {
+            UpdateLineAndStart(variable.getSymbol());
             String name = ValueBuilder.buildVariableName(variable.getText());
             if(!values.containsKey(name))
             {
@@ -294,14 +311,12 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
         if ((types.get(l) == PythonTypes.STRING && types.get(r) != PythonTypes.STRING)
                 || (types.get(l) != PythonTypes.STRING && types.get(r) == PythonTypes.STRING))
         {
-            LOGGER.log(Level.INFO, "String cannot compare to other types");
-            return "";
+            throw new IllegalArgumentException(GenerateErrorHeader() + "String cannot compare to other types");
         }
 
         if (types.get(l) == PythonTypes.NONE || types.get(r) == PythonTypes.NONE)
         {
-            LOGGER.log(Level.INFO, "None cannot be compared");
-            return "";
+            throw new IllegalArgumentException(GenerateErrorHeader() + "None cannot be compared");
         }
 
         types.put(ctx,PythonTypes.BOOL);
@@ -370,6 +385,7 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitSum(PythonG3Parser.SumContext ctx)
     {
+        if (ctx == null) throw new IllegalArgumentException("");
         if (ctx.MINUS() == null && ctx.PLUS() == null)
         {
             String temp = visitMult(ctx.mult());
@@ -385,19 +401,16 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
 
         if (types.get(l) == PythonTypes.NONE || types.get(r) == PythonTypes.NONE)
         {
-            LOGGER.log(Level.INFO, "Cannot operate on None Values");
-            return "";
+            throw new IllegalArgumentException(GenerateErrorHeader() + "Cannot operate on None Values");
         }
         else if (ctx.MINUS() != null && (types.get(r) == PythonTypes.STRING || types.get(l) == PythonTypes.STRING))
         {
-            LOGGER.log(Level.INFO, "Cannot substract Strings");
-            return "";
+            throw new IllegalArgumentException(GenerateErrorHeader() + "Cannot substract Strings");
         }
         else if ((types.get(r) == PythonTypes.STRING && types.get(l) != PythonTypes.STRING) ||
                 (types.get(r) != PythonTypes.STRING && types.get(l) == PythonTypes.STRING))
         {
-            LOGGER.log(Level.INFO, "Cannot oparate on string and different type");
-            return "";
+            throw new IllegalArgumentException(GenerateErrorHeader() + "Cannot oparate on string and different type");
         }
 
         if (types.get(r) == PythonTypes.STRING && types.get(l) == PythonTypes.STRING)
@@ -438,13 +451,11 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
 
         if(types.get(l) == PythonTypes.STRING || types.get(r) == PythonTypes.STRING)
         {
-            LOGGER.log(Level.INFO,"Cannot do division/multiplication on strings");
-            return "";
+            throw new IllegalArgumentException("Cannot do division/multiplication on strings");
         }
         else if(types.get(r) == PythonTypes.NONE || types.get(l) == PythonTypes.NONE)
         {
-            LOGGER.log(Level.INFO, "Cannot use None in multiplication/division");
-            return "";
+            throw new IllegalArgumentException("Cannot use None in multiplication/division");
         }
 
         char sign;
@@ -479,6 +490,7 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     {
         if(ctx.LEFT_PARENTHESIS() != null)
         {
+            UpdateLineAndStart(ctx.LEFT_PARENTHESIS().getSymbol());
             String temp = '(' + visitExpression(ctx.expression()) + ')';
             types.put(ctx,types.get(ctx.expression()));
             types.remove(ctx.expression());
@@ -488,35 +500,42 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
         String temp = "";
         if (ctx.FALSE() != null)
         {
+            UpdateLineAndStart(ctx.FALSE().getSymbol());
             temp = "false";
             type = PythonTypes.BOOL;
         }
         else if (ctx.TRUE() != null)
         {
+            UpdateLineAndStart(ctx.FALSE().getSymbol());
             temp = "true";
             type = PythonTypes.BOOL;
         }
         else if (ctx.NULL() != null)
         {
+            UpdateLineAndStart(ctx.NULL().getSymbol());
             temp = "nullptr";
         }
         else if (ctx.FLOAT() != null)
         {
+            UpdateLineAndStart(ctx.FLOAT().getSymbol());
             temp = ctx.FLOAT().getText();
             type = PythonTypes.FLOAT;
         }
         else if (ctx.INT() != null)
         {
+            UpdateLineAndStart(ctx.INT().getSymbol());
             temp = ctx.INT().getText();
             type = PythonTypes.NUMERICAL;
         }
         else if (ctx.STRING() != null)
         {
+            UpdateLineAndStart(ctx.STRING().getSymbol());
             temp = "std::string(" + ctx.STRING().getText() + ')';
             type = PythonTypes.STRING;
         }
         else if (ctx.VARIABLE() != null)
         {
+            UpdateLineAndStart(ctx.VARIABLE().getSymbol());
             String variable = ValueBuilder.buildVariableName(ctx.VARIABLE().getText());
             if(values.containsKey(variable))
             {
@@ -525,12 +544,26 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
             }
             else
             {
-                LOGGER.log(Level.INFO, "Unknown variable");
-                return "";
+                throw new IllegalArgumentException(GenerateErrorHeader() + "Unknown variable");
             }
+        }
+        else
+        {
+            throw new IllegalArgumentException("");
         }
         types.put(ctx,type);
         return temp;
+    }
+
+    private String GenerateErrorHeader()
+    {
+        return "line " + line + ';' + start + " : ";
+    }
+
+    private void UpdateLineAndStart(Token tk)
+    {
+        line = tk.getLine();
+        start = tk.getStartIndex();
     }
 
 
