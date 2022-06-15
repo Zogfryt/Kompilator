@@ -32,4 +32,9 @@ public class FileManager {
             throw new InterruptedIOException("Cannot create new file");
         }
     }
+
+    public static String ChangeSuffixToCpp(String path)
+    {
+        return path.substring(0,path.lastIndexOf('.')) + ".cpp";
+    }
 }
