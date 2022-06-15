@@ -137,12 +137,6 @@ public interface PythonG3Visitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitIf_statement(PythonG3Parser.If_statementContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link PythonG3Parser#try_statement}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitTry_statement(PythonG3Parser.Try_statementContext ctx);
-	/**
 	 * Visit a parse tree produced by {@link PythonG3Parser#for_statement}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

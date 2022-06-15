@@ -1,6 +1,8 @@
-zmienna = 0
-while(zmienna < 90):
-{
-    zmienna += 10
+zmienna = 0.0
+if zmienna > 0:{
+    for i in [1,2,3]:
+        {
+            zmienna += i
+        }
 }
-zmienna = 99
+zmienna = "Udało sie"

@@ -268,18 +268,6 @@ public class PythonG3BaseListener implements PythonG3Listener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterTry_statement(PythonG3Parser.Try_statementContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitTry_statement(PythonG3Parser.Try_statementContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
 	@Override public void enterFor_statement(PythonG3Parser.For_statementContext ctx) { }
 	/**
 	 * {@inheritDoc}

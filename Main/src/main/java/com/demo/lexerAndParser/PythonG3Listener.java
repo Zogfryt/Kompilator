@@ -218,16 +218,6 @@ public interface PythonG3Listener extends ParseTreeListener {
 	 */
 	void exitIf_statement(PythonG3Parser.If_statementContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link PythonG3Parser#try_statement}.
-	 * @param ctx the parse tree
-	 */
-	void enterTry_statement(PythonG3Parser.Try_statementContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PythonG3Parser#try_statement}.
-	 * @param ctx the parse tree
-	 */
-	void exitTry_statement(PythonG3Parser.Try_statementContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link PythonG3Parser#for_statement}.
 	 * @param ctx the parse tree
 	 */
