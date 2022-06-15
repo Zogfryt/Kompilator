@@ -3,6 +3,7 @@ package com.demo.tools;
 import com.demo.lexerAndParser.PythonG3BaseVisitor;
 import com.demo.lexerAndParser.PythonG3Parser;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.RuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
@@ -558,35 +559,40 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitWhile_statement(PythonG3Parser.While_statementContext ctx){
 
-        String whileString = "while" +
-                "(" +
+        return "while" +
                 visitExpression(ctx.expression()) +
-                ")" +
-                "{" +
-                visitBlock(ctx.block()) +
-                "}";
-
-        return whileString;
+                visitBlock(ctx.block());
     }
+
 
     //for_statement : FOR VARIABLE IN table COLON block;
     @Override
     public String visitFor_statement(PythonG3Parser.For_statementContext ctx){
 
         String string = visitTable(ctx.table());
-        String i = ctx.VARIABLE().getText();
+        String i = ValueBuilder.buildVariableName(ctx.VARIABLE().getText());
 
-        String forType = "";
+        String forType = "Object* ";
         switch(types.get(ctx.table())){
-            case NUMERICAL -> forType = "int";
-            case BOOL -> forType = "boolean";
-            case FLOAT -> forType = "float";
-            case STRING -> forType = "std::string";
+            case NUMERICAL -> {
+                values.put(i,PythonTypes.NUMERICAL);
+            }
+            case BOOL -> {
+                values.put(i,PythonTypes.BOOL);
+            }
+            case FLOAT -> {
+                values.put(i,PythonTypes.FLOAT);
+            }
+            case STRING -> {
+                values.put(i,PythonTypes.STRING);
+            }
             case NONE -> throw new IllegalArgumentException("Invalid type");
         }
 
         String foreachString = "for(" + forType + " " + i + " : " + string + ")" +
                 visitBlock(ctx.block());
+
+        values.remove(i);
 
         return foreachString;
     }
@@ -594,11 +600,36 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     //if_statement : IF expression COLON block (ELSE_IF expression COLON block)* (ELSE COLON block);
     @Override
     public String visitIf_statement(PythonG3Parser.If_statementContext ctx){
-        String ifString = "if(" +
-                visitExpression((PythonG3Parser.ExpressionContext) ctx.expression()) + ")" +
-                visitBlock((PythonG3Parser.BlockContext) ctx.block()) + "}";
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("Not if");
+        }
+        StringBuilder builder = new StringBuilder();
+        builder.append("if( ");
+        builder.append(visitExpression(ctx.expression().get(0)));
+        builder.append(")");
+        builder.append(visitBlock(ctx.block().get(0)));
+        builder.append(separator);
+        if(ctx.ELSE_IF() != null)
+        {
+            for (int i =0; i<ctx.ELSE_IF().size(); i++)
+            {
+                builder.append("else if (");
+                builder.append(visitExpression(ctx.expression().get(i+1)));
+                builder.append(")");
+                builder.append(visitBlock(ctx.block().get(i+1)));
+                builder.append(separator);
+            }
+        }
+        if(ctx.ELSE() != null)
+        {
+            builder.append("else");
+            builder.append(visitBlock(ctx.block().get(ctx.block().size()-1)));
+            builder.append(separator);
+        }
 
-        return ifString;
+
+        return builder.toString();
     }
 
     @Override
@@ -606,7 +637,7 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
         //table : LEFT_BRACKET list_of_variables RIGHT_BRACKET;
 
         // types.get biore typ tablicy i dodaje do niej nazwe tablicy (tak przynajmniej mi sie zdaje)
-        String table = "[" + visitList_of_variables(ctx.list_of_variables()) + "]";
+        String table = "{" + visitList_of_variables(ctx.list_of_variables()) + "}";
 
         types.put(ctx,types.get(ctx.list_of_variables()));
         types.remove(ctx.list_of_variables());
@@ -631,7 +662,13 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
              }
          }
 
-         return blockString + "}";
+         if(ctx.parent instanceof PythonG3Parser.For_statementContext)
+         {
+             PythonG3Parser.For_statementContext parent = (PythonG3Parser.For_statementContext) ctx.parent;
+             blockString += "delete " + ValueBuilder.buildVariableName(parent.VARIABLE().getText()) + ";" + separator;
+         }
+
+         return blockString + "}" + separator;
     }
 
     @Override
@@ -641,22 +678,28 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
         StringBuilder stringBuilder = new StringBuilder();
 
         for(var child : ctx.atom()){
-            stringBuilder.append(visitAtom(child));
-            stringBuilder.append(",");
-
+            String temp = visitAtom(child);
             if(isFirst){
                type = types.get(child);
-               types.remove(child);
                isFirst = false;
-               continue;
             }
 
             if(type != types.get(child)){
                 throw new IllegalArgumentException("Values in the array are not in the same type!");
             }
+            stringBuilder.append("new ");
+            switch(type)
+            {
+                case NUMERICAL -> stringBuilder.append("Integer(");
+                case BOOL -> stringBuilder.append("Boolean(");
+                case FLOAT -> stringBuilder.append("Double(");
+                case STRING -> stringBuilder.append("String(");
+                case NONE -> throw new IllegalArgumentException("Cannot use None");
+            }
+            stringBuilder.append(temp);
+            stringBuilder.append("),");
 
             types.remove(child);
-
         }
 
         //usuwa przecinek

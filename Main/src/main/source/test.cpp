@@ -34,7 +34,13 @@ double doubleBuffer;
 
 int main() {
 
+Object* var_zmienna = new Integer(0);
+while(((Integer*)var_zmienna)->value<90){
+((Integer*)var_zmienna)->value+=10;
+}
+((Integer*)var_zmienna)->value = 99;
 
+delete var_zmienna;
 
 return 0;
 }
