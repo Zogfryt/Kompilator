@@ -3,12 +3,9 @@ package com.demo.tools;
 import com.demo.lexerAndParser.PythonG3BaseVisitor;
 import com.demo.lexerAndParser.PythonG3Parser;
 import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.RuleContext;
 import org.antlr.v4.runtime.Token;
-import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.io.*;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -113,6 +110,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
 
     @Override
     public String visitStatement(PythonG3Parser.StatementContext ctx) {
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         if(ctx.simple_statement() != null)
         {
             return visitSimple_statement(ctx.simple_statement());
@@ -128,6 +129,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitSimple_statement(PythonG3Parser.Simple_statementContext ctx)
     {
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         if (ctx.assign_statement() != null)
         {
             return visitAssign_statement(ctx.assign_statement());
@@ -153,6 +158,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitIncrement_statement(PythonG3Parser.Increment_statementContext ctx)
     {
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         UpdateLineAndStart(ctx.VARIABLE().getSymbol());
         String variable = ValueBuilder.buildVariableName(ctx.VARIABLE().getText());
         if (!values.containsKey(variable))
@@ -211,6 +220,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitAssign_statement(PythonG3Parser.Assign_statementContext ctx)
     {
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         String expression = visitExpression(ctx.expression());
         PythonTypes type = types.get(ctx.expression());
         StringBuilder build = new StringBuilder();
@@ -240,6 +253,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitExpression(PythonG3Parser.ExpressionContext ctx)
     {
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         if (ctx.CONST_OR() == null)
         {
             String temp = visitConjunction(ctx.conjunction());
@@ -262,6 +279,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitConjunction(PythonG3Parser.ConjunctionContext ctx)
     {
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         if (ctx.CONST_AND() == null)
         {
             String temp = visitInversion(ctx.inversion());
@@ -282,6 +303,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitInversion(PythonG3Parser.InversionContext ctx)
     {
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         if (ctx.NEGATION() == null)
         {
             String temp =  visitComparative(ctx.comparative());
@@ -298,6 +323,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitComparative(PythonG3Parser.ComparativeContext ctx)
     {
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         if(ctx.comparative_tail() == null)
         {
             String temp = visitSum(ctx.sum());
@@ -333,6 +362,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitComparative_tail(PythonG3Parser.Comparative_tailContext ctx)
     {
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         String temp =  visit(ctx.getChild(0));
         types.put(ctx,types.get(ctx.getChild(0)));
         types.remove(ctx.getChild(0));
@@ -342,6 +375,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitComparative_eq(PythonG3Parser.Comparative_eqContext ctx)
     {
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         String temp = "==" + visitSum(ctx.sum());
         types.put(ctx,types.get(ctx.sum()));
         types.remove(ctx.sum());
@@ -351,6 +388,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitComparative_eq_less(PythonG3Parser.Comparative_eq_lessContext ctx)
     {
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         String temp = "<=" + visitSum(ctx.sum());
         types.put(ctx,types.get(ctx.sum()));
         types.remove(ctx.sum());
@@ -360,6 +401,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitComparative_eq_more(PythonG3Parser.Comparative_eq_moreContext ctx)
     {
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         String temp = ">=" + visitSum(ctx.sum());
         types.put(ctx,types.get(ctx.sum()));
         types.remove(ctx.sum());
@@ -369,6 +414,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitComparative_more(PythonG3Parser.Comparative_moreContext ctx)
     {
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         String temp = ">" + visitSum(ctx.sum());
         types.put(ctx,types.get(ctx.sum()));
         types.remove(ctx.sum());
@@ -378,6 +427,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitComparative_less(PythonG3Parser.Comparative_lessContext ctx)
     {
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         String temp = "<" + visitSum(ctx.sum());
         types.put(ctx,types.get(ctx.sum()));
         types.remove(ctx.sum());
@@ -438,6 +491,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitMult(PythonG3Parser.MultContext ctx)
     {
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         if(ctx.MULTIPLICATION() == null && ctx.DIVISION() == null)
         {
             String temp = visitAtom(ctx.atom());
@@ -490,6 +547,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     @Override
     public String visitAtom(PythonG3Parser.AtomContext ctx)
     {
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         if(ctx.LEFT_PARENTHESIS() != null)
         {
             UpdateLineAndStart(ctx.LEFT_PARENTHESIS().getSymbol());
@@ -558,9 +619,13 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     }
     @Override
     public String visitWhile_statement(PythonG3Parser.While_statementContext ctx){
-
-        return "while" +
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
+        return "while (" +
                 visitExpression(ctx.expression()) +
+                ")" +
                 visitBlock(ctx.block());
     }
 
@@ -568,7 +633,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     //for_statement : FOR VARIABLE IN table COLON block;
     @Override
     public String visitFor_statement(PythonG3Parser.For_statementContext ctx){
-
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         String string = visitTable(ctx.table());
         String i = ValueBuilder.buildVariableName(ctx.VARIABLE().getText());
 
@@ -634,6 +702,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
 
     @Override
     public String visitTable(PythonG3Parser.TableContext ctx){
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         //table : LEFT_BRACKET list_of_variables RIGHT_BRACKET;
 
         // types.get biore typ tablicy i dodaje do niej nazwe tablicy (tak przynajmniej mi sie zdaje)
@@ -647,6 +719,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
 
     @Override
     public String visitBlock(PythonG3Parser.BlockContext ctx){
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
 
         if(ctx.simple_statement() != null) {
             return visitSimple_statement(ctx.simple_statement());
@@ -673,6 +749,10 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
 
     @Override
     public String visitList_of_variables(PythonG3Parser.List_of_variablesContext ctx){
+        if (ctx == null)
+        {
+            throw new IllegalArgumentException("");
+        }
         boolean isFirst = true;
         PythonTypes type = null;
         StringBuilder stringBuilder = new StringBuilder();
