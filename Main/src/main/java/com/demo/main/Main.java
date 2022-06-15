@@ -17,7 +17,7 @@ public class Main {
     public static void main(String[] args){
         if (args.length != 1 || !args[0].endsWith(".py"))
         {
-            LOGGER.log(Level.INFO,"Usage: java -jar PyCpp [path to source file .py]");
+            LOGGER.log(Level.INFO,"Usage: java -jar Main-1.0-SNAPSHOT-jar-with-dependencies.jar [path to source file .py]");
             return;
         }
         String arg = args[0];
