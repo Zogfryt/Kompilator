@@ -4,29 +4,29 @@ import java.io.*;
 
 public class FileManager {
 
+    private File out;
     public PrintWriter createPrintWriterToGivenFile(String path) throws IOException {
-        File out = manageFile(path);
+        manageFile(path);
         FileWriter subwriter = new FileWriter(out);
         return new PrintWriter(subwriter);
     }
 
-    private File manageFile(String path) throws IOException {
-        File out = new File(path);
+    private void manageFile(String path) throws IOException {
+        out = new File(path);
         if(out.exists())
         {
-            deleteFile(out);
+            deleteFile();
         }
-        createNewFile(out);
-        return out;
+        createNewFile();
     }
 
-    private void deleteFile(File out) throws InterruptedIOException {
+    public void deleteFile() throws InterruptedIOException {
         if(!out.delete())
         {
             throw new InterruptedIOException("Connot delete file to create output");
         }
     }
-    private void createNewFile(File out) throws IOException {
+    private void createNewFile() throws IOException {
         if(!out.createNewFile())
         {
             throw new InterruptedIOException("Cannot create new file");

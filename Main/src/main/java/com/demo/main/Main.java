@@ -28,9 +28,11 @@ public class Main {
 
             PythonG3Parser parser = new PythonG3Parser(stream);
             PythonG3Parser.File_inputContext fileInput = parser.file_input();
+            boolean errors = parser.getNumberOfSyntaxErrors() > 0;
 
             String argCpp = FileManager.ChangeSuffixToCpp(arg);
             PythonG3Generator gen = new PythonG3Generator(argCpp);
+            gen.errors = errors;
             gen.visit(fileInput);
 
             LOGGER.log(Level.INFO,"Done");

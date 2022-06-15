@@ -19,6 +19,9 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
     private final HashMap<ParserRuleContext,PythonTypes> types;
     private int line;
     private int start;
+    public boolean errors;
+
+    private FileManager manager;
 
     private final String Header = """
     #include <string>
@@ -58,7 +61,7 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
 
 
     public PythonG3Generator(String path) throws IOException {
-        FileManager manager = new FileManager();
+        manager = new FileManager();
         writer = manager.createPrintWriterToGivenFile(path);
         values = new HashMap<>();
         separator = System.lineSeparator();
@@ -84,6 +87,7 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
                 if (!exception.getMessage().isEmpty())
                 {
                     LOGGER.log(Level.INFO, exception.getMessage());
+                    errors = true;
                 }
                 continue;
             }
@@ -105,6 +109,15 @@ public class PythonG3Generator extends PythonG3BaseVisitor<String> {
         writer.println("return 0;");
         writer.println("}");
         writer.close();
+        if (errors)
+        {
+            try {
+                manager.deleteFile();
+            }catch(Exception e)
+            {
+                LOGGER.log(Level.INFO,"Error while working with file, bad compilation could have been saved");
+            }
+        }
         return null;
     }
 
